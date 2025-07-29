@@ -47,8 +47,6 @@ const NetworkGraph: React.FC = () => {
 
   // Mock API function - replace with your actual API endpoint
   const fetchNetworkData = async (): Promise<ApiResponse> => {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
 
     // Uncomment and modify this for actual API call:
     const response = await fetch('/status');
