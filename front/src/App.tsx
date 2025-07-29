@@ -309,10 +309,10 @@ const NetworkGraph: React.FC = () => {
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-white mb-2">
-            Network Topology Visualization
+            Dornica Network Topology Visualization
           </h1>
           <p className="text-blue-200 text-lg">
-            Real-time network graph powered by API data
+            Data reflects the worst connection status in the past 10 minutes.
           </p>
         </div>
 
@@ -359,16 +359,6 @@ const NetworkGraph: React.FC = () => {
                 </div> 
               </div>
 
-              {/* Refresh Button */}
-              <button
-                onClick={loadNetworkData}
-                disabled={loading}
-                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white py-3 px-4 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:transform-none mb-6"
-              >
-                <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
-                Refresh Data
-              </button>
-
               {/* Last Updated */}
               {lastUpdated && (
                 <div className="mb-6 p-3 bg-white/5 rounded-lg border border-white/10">
@@ -378,6 +368,16 @@ const NetworkGraph: React.FC = () => {
                   </div>
                 </div>
               )}
+
+              {/* Refresh Button */}
+              <button
+                onClick={loadNetworkData}
+                disabled={loading}
+                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white py-3 px-4 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:transform-none mb-6"
+              >
+                <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+                Refresh Data
+              </button>
 
               {/* Selected Node Info */}
               {selectedNode && (
