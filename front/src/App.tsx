@@ -32,7 +32,14 @@ function strengthToColor(strength: number): string {
 }
 
 function truncateText(text: string, maxLength: number): string {
-  text = text.replace(/https?:\/\//g,"").replace(/\//g,"")
+  text = text
+    .replace(/https?:\/\//g,"")
+    .replace(/\//g,"")
+    .replace(/:\d+/g,"")
+    .replace(/dornica-co.local/g,"local")
+    .replace(/bonyadmaskan.ir/g,"bm")
+    .replace(/h3-devops-/g,"")
+    .replace(/172.18.100.*/g,"Bonyad.Mobin")
   return text.length > maxLength ? text.slice(0, maxLength - 1) + '…' : text;
 }
 
@@ -161,21 +168,7 @@ const NetworkGraph: React.FC = () => {
       .attr('stop-color', '#F59E0B')
       .attr('stop-opacity', 1);
 
-    // Create arrow marker
-    defs.append('marker')
-      .attr('id', 'arrowhead')
-      .attr('viewBox', '-0 -5 10 10')
-      .attr('refX', 30)
-      .attr('refY', 0)
-      .attr('orient', 'auto')
-      .attr('markerWidth', 8)
-      .attr('markerHeight', 8)
-      .attr('xoverflow', 'visible')
-      .append('path')
-      .attr('d', 'M 0,-5 L 10 ,0 L 0,5')
-      .attr('fill', '#64748B')
-      .attr('stroke', 'none');
-
+// Use <path> instead of <line> for marker-mid support
     // Create connections
     const link = g.append('g')
       .attr('class', 'links')
@@ -183,9 +176,8 @@ const NetworkGraph: React.FC = () => {
       .data(connections)
       .enter().append('line')
       .attr('stroke',(d: Connection) => strengthToColor(d.strength))
-      .attr('stroke-opacity', 0.6)
-      // .attr('stroke-width', (d: Connection) => Math.sqrt((d.strength || 0.5) * 8))
-      .attr('marker-end', 'url(#arrowhead)');
+      .attr('stroke-opacity', 0.6);
+      // .attr('stroke-width', (d: Connection) => Math.sqrt((d.strength || 0.5) * 8));
 
     // Create nodes
     const node = g.append('g')
@@ -238,7 +230,7 @@ const NetworkGraph: React.FC = () => {
 
     // Add labels to nodes
     node.append('text')
-      .text((d: Node) => truncateText(d.name, 12))
+      .text((d: Node) => truncateText(d.name, 25))
       .attr('dy', 40)
       .attr('text-anchor', 'middle')
       .attr('font-family', 'Inter, system-ui, sans-serif')
