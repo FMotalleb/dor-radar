@@ -13,7 +13,7 @@ interface Node {
 interface Connection {
   source: string | Node;
   target: string | Node;
-  strength?: number;
+  strength: number;
 }
 
 interface ApiResponse {
@@ -29,6 +29,28 @@ function strengthToColor(strength: number): string {
     const t = (strength - 0.95) / 0.05; // Normalize to 0–1 for orange → green
     return d3.interpolateRgb("#FFA500", "#00FF00")(t); // orange → green
   }
+}
+
+function SuccessRateBox(connections: Array<Connection>) {
+  const total = connections.length;
+  const sum = connections.reduce((acc, cur) => acc + cur.strength, 0);
+  const rate = total === 0 ? 0 : (sum / total) * 100;
+
+  let bgColor = "bg-red-500/20 border-red-400/30";
+  if (rate >= 95 && rate < 100) {
+    bgColor = "bg-orange-500/20 border-orange-400/30";
+  } else if (rate === 100) {
+    bgColor = "bg-green-500/20 border-green-400/30";
+  }
+
+  return (
+    <div className={`rounded-lg p-3 border mb-6 ${bgColor}`}>
+      <div className="text-sm text-white/60 font-medium">Overall Success</div>
+      <div className="text-white text-2xl font-bold">
+        {total === 0 ? "N/A" : `${rate.toFixed(1)}%`}
+      </div>
+    </div>
+  );
 }
 
 function truncateText(text: string, maxLength: number): string {
@@ -394,11 +416,12 @@ const NetworkGraph: React.FC = () => {
                   </div>
                 </div>
               </div>
+              {SuccessRateBox(connections)}
 
               {/* Last Updated */}
               {lastUpdated && (
                 <div className="mb-6 p-3 bg-white/5 rounded-lg border border-white/10">
-                  <div className="text-white text-sm font-medium">
+                  <div className="text-sm text-white/60 font-medium">
                     Last Updated
                   </div>
                   <div className="text-blue-200 text-xs">
