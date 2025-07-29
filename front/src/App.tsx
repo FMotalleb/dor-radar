@@ -20,6 +20,7 @@ interface ApiResponse {
   nodes: Array<{ id: number; name: string }>;
   connections: Array<{ source: number; target: number; strength?: number }>;
 }
+
 function strengthToColor(strength: number): string {
   if (strength <= 0.95) {
     const t = strength / 0.95; // Normalize to 0–1 for red → orange
@@ -29,6 +30,12 @@ function strengthToColor(strength: number): string {
     return d3.interpolateRgb("#FFA500", "#00FF00")(t); // orange → green
   }
 }
+
+function truncateText(text: string, maxLength: number): string {
+  text = text.replace(/https?:\/\//g,"").replace(/\//g,"")
+  return text.length > maxLength ? text.slice(0, maxLength - 1) + '…' : text;
+}
+
 const NetworkGraph: React.FC = () => {
   const svgRef = useRef<SVGSVGElement>(null);
   const [nodes, setNodes] = useState<Node[]>([]);
@@ -48,7 +55,9 @@ const NetworkGraph: React.FC = () => {
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
-    return await response.json();
+    const data = await response.json()
+
+    return data;
   };
 
   const loadNetworkData = async () => {
@@ -231,15 +240,19 @@ const NetworkGraph: React.FC = () => {
 
     // Add labels to nodes
     node.append('text')
-      .text((d: Node) => d.name)
+      .text((d: Node) => truncateText(d.name, 12))
       .attr('dy', 40)
       .attr('text-anchor', 'middle')
       .attr('font-family', 'Inter, system-ui, sans-serif')
       .attr('font-size', '12px')
       .attr('font-weight', '600')
-      .attr('fill', '#1E293B')
       .style('pointer-events', 'none')
-      .style('user-select', 'none');
+      .style('user-select', 'none')
+      .attr('fill', '#F8FAFC') // Light text color
+      .append('title') // Tooltip for full text
+      .text((d: Node) => d.name)   ;
+
+ 
 
     // Update positions on simulation tick
     simulation.on('tick', () => {
@@ -307,13 +320,13 @@ const NetworkGraph: React.FC = () => {
         <div className="flex flex-col lg:flex-row gap-6">
           {/* Graph Container */}
           <div className="flex-1">
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 p-6 shadow-2xl">
+            <div className="bg-slate-800/70 backdrop-blur-sm rounded-2xl border border-slate-600 p-6 shadow-2xl">
               <svg
                 ref={svgRef}
                 width="100%"
                 height="600"
                 viewBox="0 0 800 600"
-                className="w-full h-auto border rounded-lg bg-gradient-to-br from-slate-50 to-slate-100"
+                className="w-full h-auto border rounded-lg bg-gradient-to-br from-slate-800 to-slate-900"
               />
             </div>
           </div>
@@ -336,6 +349,14 @@ const NetworkGraph: React.FC = () => {
                   <div className="text-green-200 text-sm">Connections</div>
                   <div className="text-white text-2xl font-bold">{connections.length}</div>
                 </div>
+                <div className="bg-green-500/20 rounded-lg p-3 border border-green-400/30">
+                  <div className="text-green-200 text-sm">Ok</div>
+                  <div className="text-white text-2xl font-bold">{connections.filter((a: Connection)=>a.strength ==1).length}</div>
+                </div>
+                <div className="bg-red-500/20 rounded-lg p-3 border border-red-400/30">
+                  <div className="text-red-200 text-sm">Errors</div>
+                  <div className="text-white text-2xl font-bold">{connections.filter((a: Connection)=>a.strength !=1).length}</div>
+                </div> 
               </div>
 
               {/* Refresh Button */}
@@ -365,9 +386,6 @@ const NetworkGraph: React.FC = () => {
                   <div className="text-white font-semibold">
                     {nodes.find(n => n.id === selectedNode)?.name}
                   </div>
-                  <div className="text-yellow-200 text-sm mt-1">
-                    ID: {selectedNode}
-                  </div>
                 </div>
               )}
 
@@ -381,14 +399,6 @@ const NetworkGraph: React.FC = () => {
                   <li>• Drag background to pan</li>
                   <li>• Click refresh to reload from API</li>
                 </ul>
-              </div>
-
-              {/* API Info */}
-              <div className="mt-4 p-4 bg-purple-500/20 rounded-lg border border-purple-400/30">
-                <h3 className="text-purple-200 text-sm font-medium mb-2">API Integration</h3>
-                <div className="text-purple-100 text-xs">
-                  Data is fetched from API endpoint and automatically transformed for visualization.
-                </div>
               </div>
             </div>
           </div>
