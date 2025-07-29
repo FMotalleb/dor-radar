@@ -3,6 +3,7 @@ package prometheus
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"github.com/fmotalleb/dor-radar/config"
 )
@@ -19,7 +20,21 @@ func New(collectors config.Collector) *PromCollector {
 
 // ServeHTTP implements http.Handler.
 func (p *PromCollector) ServeHTTP(res http.ResponseWriter, req *http.Request) {
-	data, err := GetData(req.Context(), p.config.Target)
+	params := req.URL.Query()
+	windowStr := params.Get("window")
+	if windowStr == "" {
+		windowStr = "10"
+	}
+	window, err := strconv.Atoi(windowStr)
+	if err != nil {
+		http.Error(res, "Failed to parse request", http.StatusBadRequest)
+	}
+
+	minimum := false
+	if params.Get("method") == "min" {
+		minimum = true
+	}
+	data, err := GetData(req.Context(), p.config.Target, window, minimum)
 	if err != nil {
 		http.Error(res, "Failed to get data", http.StatusInternalServerError)
 	}

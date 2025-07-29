@@ -3,6 +3,7 @@ package prometheus
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -21,12 +22,23 @@ type PromResponse struct {
 	} `json:"data"`
 }
 
-func GetData(ctx context.Context, baseUrl *url.URL) (map[string]interface{}, error) {
+func GetData(ctx context.Context, baseUrl *url.URL, window int, minimum bool) (map[string]interface{}, error) {
 	// Construct full query URL
+	switch {
+	case window < 1:
+		return nil, errors.New("minimum range is 1 minute")
+	case window > 60:
+		return nil, errors.New("Maximum range is 60 minutes")
+	}
+	method := "avg_over_time"
+	if minimum {
+		method = "min_over_time"
+	}
 	url := baseUrl.JoinPath("api", "v1", "query")
-	query := url.Query()
-	query.Add("query", "min_over_time(probe_success[10m])")
-	url.RawQuery = query.Encode()
+	queryParams := url.Query()
+	query := fmt.Sprintf("%s(probe_success[%dm])", method, window)
+	queryParams.Add("query", query)
+	url.RawQuery = queryParams.Encode()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url.String(), nil)
 	if err != nil {
