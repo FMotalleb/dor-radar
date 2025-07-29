@@ -1,3 +1,3 @@
 FROM scratch
-COPY seed /
-ENTRYPOINT ["/seed"]
+COPY dor-radar /
+ENTRYPOINT ["/dor-radar"]
