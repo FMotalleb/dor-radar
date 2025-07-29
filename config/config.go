@@ -2,14 +2,18 @@ package config
 
 import (
 	"net/url"
-	"time"
 )
 
 type Config struct {
-	Collectors []Collector `mapstructure:"collectors" toml:"collectors" yaml:"collectors" json:"collectors"`
+	Core CoreCfg `mapstructure:"core" toml:"core" yaml:"core" json:"core"`
+}
+
+type CoreCfg struct {
+	Listen    string    `mapstructure:"listen" toml:"listen" yaml:"listen" json:"listen"`
+	Collector Collector `mapstructure:"collector" toml:"collector" yaml:"collector" json:"collector"`
 }
 
 type Collector struct {
-	Target  *url.URL      `mapstructure:"to,omitempty" toml:"to,omitempty" yaml:"to,omitempty" json:"to,omitempty"`
-	Timeout time.Duration `mapstructure:"timeout,omitempty" toml:"timeout,omitempty" yaml:"timeout,omitempty" json:"timeout,omitempty"`
+	Target *url.URL `mapstructure:"target,omitempty" toml:"target,omitempty" yaml:"target,omitempty" json:"target,omitempty"`
+	// Timeout time.Duration `mapstructure:"timeout,omitempty" toml:"timeout,omitempty" yaml:"timeout,omitempty" json:"timeout,omitempty"`
 }

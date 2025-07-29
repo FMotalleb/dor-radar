@@ -17,21 +17,38 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
+	"net/http"
 	"os"
 
 	"github.com/fmotalleb/go-tools/git"
 	"github.com/spf13/cobra"
+
+	"github.com/fmotalleb/dor-radar/config"
+	"github.com/fmotalleb/dor-radar/front"
+	"github.com/fmotalleb/dor-radar/prometheus"
 )
 
-// rootCmd represents the base command when called without any subcommands
+// rootCmd represents the base command when called without any subcommands.
 var rootCmd = &cobra.Command{
 	Use:   "dor-radar",
 	Short: "Network status radar for dornica infrastructure",
 
-	Version: git.Version(),
+	Version: git.String(),
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
-	// Run: func(cmd *cobra.Command, args []string) { },
+	RunE: func(cmd *cobra.Command, args []string) error {
+		var configFile string
+		var err error
+		var cfg config.Config
+		if configFile, err = cmd.Flags().GetString("config"); err != nil {
+			return err
+		}
+
+		if err = config.Parse(&cfg, configFile, true); err != nil {
+			return err
+		}
+		return serve(cfg)
+	},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -44,13 +61,10 @@ func Execute() {
 }
 
 func init() {
-	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
+	rootCmd.Flags().StringP("config", "c", "./config.toml", "config file path")
+}
 
-	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.dor-radar.yaml)")
-
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+func serve(cfg config.Config) error {
+	http.Handle("/status", prometheus.New(cfg.Core.Collector))
+	return front.Serve(cfg.Core.Listen)
 }

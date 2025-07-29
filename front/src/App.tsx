@@ -20,7 +20,15 @@ interface ApiResponse {
   nodes: Array<{ id: number; name: string }>;
   connections: Array<{ source: number; target: number; strength?: number }>;
 }
-
+function strengthToColor(strength: number): string {
+  if (strength <= 0.95) {
+    const t = strength / 0.95; // Normalize to 0–1 for red → orange
+    return d3.interpolateRgb("#FF0000", "#FFA500")(t); // red → orange
+  } else {
+    const t = (strength - 0.95) / 0.05; // Normalize to 0–1 for orange → green
+    return d3.interpolateRgb("#FFA500", "#00FF00")(t); // orange → green
+  }
+}
 const NetworkGraph: React.FC = () => {
   const svgRef = useRef<SVGSVGElement>(null);
   const [nodes, setNodes] = useState<Node[]>([]);
@@ -34,37 +42,13 @@ const NetworkGraph: React.FC = () => {
   const fetchNetworkData = async (): Promise<ApiResponse> => {
     // Simulate API delay
     await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Mock data - replace this with actual fetch call
-    return {
-      nodes: [
-        { id: 0, name: "local" },
-        { id: 1, name: "database" },
-        { id: 2, name: "api-server" },
-        { id: 3, name: "load-balancer" },
-        { id: 4, name: "cache-redis" },
-        { id: 5, name: "auth-service" },
-        { id: 6, name: "file-storage" },
-        { id: 7, name: "monitoring" }
-      ],
-      connections: [
-        { source: 0, target: 1, strength: 0.9 },
-        { source: 0, target: 2, strength: 0.8 },
-        { source: 2, target: 3, strength: 0.7 },
-        { source: 3, target: 4, strength: 0.6 },
-        { source: 2, target: 5, strength: 0.8 },
-        { source: 0, target: 6, strength: 0.5 },
-        { source: 2, target: 7, strength: 0.4 },
-        { source: 4, target: 7, strength: 0.3 }
-      ]
-    };
-    
+
     // Uncomment and modify this for actual API call:
-    // const response = await fetch('YOUR_API_ENDPOINT');
-    // if (!response.ok) {
-    //   throw new Error(`HTTP error! status: ${response.status}`);
-    // }
-    // return await response.json();
+    const response = await fetch('/status');
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
   };
 
   const loadNetworkData = async () => {
@@ -191,9 +175,9 @@ const NetworkGraph: React.FC = () => {
       .selectAll('line')
       .data(connections)
       .enter().append('line')
-      .attr('stroke', '#64748B')
+      .attr('stroke',(d: Connection) => strengthToColor(d.strength))
       .attr('stroke-opacity', 0.6)
-      .attr('stroke-width', (d: Connection) => Math.sqrt((d.strength || 0.5) * 8))
+      // .attr('stroke-width', (d: Connection) => Math.sqrt((d.strength || 0.5) * 8))
       .attr('marker-end', 'url(#arrowhead)');
 
     // Create nodes
