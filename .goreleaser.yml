@@ -12,6 +12,13 @@ builds:
       - windows
     goarch:
       - amd64
+    ldflags:
+      - "-s"
+      - "-w"
+      - "-X github.com/fmotalleb/go-tools/git.Version={{.Version}}"
+      - "-X github.com/fmotalleb/go-tools/git.Commit={{.ShortCommit}}"
+      - "-X github.com/fmotalleb/go-tools/git.Date={{.Date}}"
+      - "-X github.com/fmotalleb/go-tools/git.Branch={{.Branch}}"
 archives:
   - format_overrides:
       - goos: windows
@@ -32,7 +39,9 @@ dockers:
     - "--label=org.opencontainers.image.version={{.Version}}"
     - "--label=org.opencontainers.image.source={{.GitURL}}"
 release:
-  github:
+  github: 
+    owner: FMotalleb
+    name: dor-radar
   name_template: "{{.Version}}"
   prerelease: auto
   mode: append

@@ -19,7 +19,7 @@ coverage.html
 #vendor/
 
 # Output of GoReleaser
-dist/
+/dist/
 
 # Visual Studio Code files
 .vscode/*
