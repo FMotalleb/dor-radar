@@ -22,16 +22,27 @@ type PromResponse struct {
 }
 
 func GetData(ctx context.Context, baseUrl *url.URL) (map[string]interface{}, error) {
-	url := baseUrl
-	url = url.JoinPath("api", "v1", "query")
+	// Construct full query URL
+	url := baseUrl.JoinPath("api", "v1", "query")
 	query := url.Query()
 	query.Add("query", "min_over_time(probe_success[10m])")
 	url.RawQuery = query.Encode()
-	// Prepare request URL with query param
-	reqURL := url.String()
-	cl := new(http.Client)
-	cl.Timeout = time.Second * 20
-	resp, err := cl.Get(reqURL)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url.String(), nil)
+	if err != nil {
+		fmt.Println("Error creating request:", err)
+		return nil, err
+	}
+
+	// Handle Basic Auth if credentials are provided
+	if baseUrl.User != nil {
+		username := baseUrl.User.Username()
+		password, _ := baseUrl.User.Password() // ok to ignore second return value
+		req.SetBasicAuth(username, password)
+	}
+
+	client := &http.Client{Timeout: 20 * time.Second}
+	resp, err := client.Do(req)
 	if err != nil {
 		fmt.Println("Error querying Prometheus:", err)
 		return nil, err
@@ -52,22 +63,19 @@ func GetData(ctx context.Context, baseUrl *url.URL) (map[string]interface{}, err
 
 	if promResp.Status != "success" {
 		fmt.Println("Prometheus query failed")
-		return nil, err
+		return nil, fmt.Errorf("query failed: %s", promResp.Status)
 	}
 
-	// Proceed to transform promResp.Data.Result
-	nodesMap := make(map[string]int) // map node name to id
+	nodesMap := make(map[string]int)
 	var nodes []map[string]interface{}
 	var connections []map[string]interface{}
 	nodeID := 0
 
 	for _, result := range promResp.Data.Result {
-		// Example label usage: use hostname as node name
 		hostname := result.Metric["hostname"]
 		target := result.Metric["target"]
 		valueStr := fmt.Sprintf("%v", result.Value[1])
 
-		// Add hostname node if not exists
 		if _, ok := nodesMap[hostname]; !ok {
 			nodesMap[hostname] = nodeID
 			nodes = append(nodes, map[string]interface{}{
@@ -76,7 +84,6 @@ func GetData(ctx context.Context, baseUrl *url.URL) (map[string]interface{}, err
 			})
 			nodeID++
 		}
-		// Add target node if not exists
 		if _, ok := nodesMap[target]; !ok {
 			nodesMap[target] = nodeID
 			nodes = append(nodes, map[string]interface{}{
@@ -86,7 +93,6 @@ func GetData(ctx context.Context, baseUrl *url.URL) (map[string]interface{}, err
 			nodeID++
 		}
 
-		// Parse value (should be float, 0 or 1)
 		var strength float64
 		fmt.Sscanf(valueStr, "%f", &strength)
 
@@ -100,11 +106,6 @@ func GetData(ctx context.Context, baseUrl *url.URL) (map[string]interface{}, err
 	output := map[string]interface{}{
 		"nodes":       nodes,
 		"connections": connections,
-	}
-
-	if err != nil {
-		fmt.Println("Error marshaling output JSON:", err)
-		return nil, err
 	}
 
 	return output, nil
