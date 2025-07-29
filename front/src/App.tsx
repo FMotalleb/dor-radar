@@ -345,8 +345,8 @@ const NetworkGraph: React.FC = () => {
                   <div className="text-blue-200 text-sm">Nodes</div>
                   <div className="text-white text-2xl font-bold">{nodes.length}</div>
                 </div>
-                <div className="bg-green-500/20 rounded-lg p-3 border border-green-400/30">
-                  <div className="text-green-200 text-sm">Connections</div>
+                <div className="bg-purple-500/20 rounded-lg p-3 border border-purple-400/30">
+                  <div className="text-purple-200 text-sm">Connections</div>
                   <div className="text-white text-2xl font-bold">{connections.length}</div>
                 </div>
                 <div className="bg-green-500/20 rounded-lg p-3 border border-green-400/30">
