@@ -177,9 +177,6 @@ const NetworkGraph: React.FC = () => {
               dst.endsWith(".remote"),
             ];
             const distant = checks.filter((a) => a).length > 0;
-            console.log(
-              `Linking ${src} to ${dst}, distant: ${distant}, strength: ${d.strength}`
-            );
             return distant ? 250 : 120; // longer links for DC
           })
           .strength((d: Connection) => d.strength || 0.4)
