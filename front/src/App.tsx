@@ -13,8 +13,8 @@ interface Node {
 }
 
 interface Connection {
-  source: string | Node;
-  target: string | Node;
+  source: Node;
+  target: Node;
   strength: number;
 }
 
@@ -87,7 +87,122 @@ const NetworkGraph: React.FC = () => {
       window: window.toString(),
       method: minimum ? "min" : "default",
     });
-
+    return {
+      connections: [
+        {
+          source: 0,
+          strength: 0.8,
+          target: 1,
+        },
+        {
+          source: 0,
+          strength: 0.8,
+          target: 2,
+        },
+        {
+          source: 0,
+          strength: 0.8,
+          target: 3,
+        },
+        {
+          source: 0,
+          strength: 0.8,
+          target: 4,
+        },
+        {
+          source: 5,
+          strength: 0.8,
+          target: 6,
+        },
+        {
+          source: 5,
+          strength: 0.8,
+          target: 0,
+        },
+        {
+          source: 0,
+          strength: 0.8,
+          target: 7,
+        },
+        {
+          source: 0,
+          strength: 1,
+          target: 8,
+        },
+        {
+          source: 0,
+          strength: 1,
+          target: 9,
+        },
+        {
+          source: 0,
+          strength: 1,
+          target: 6,
+        },
+      ],
+      nodes: [
+        {
+          attrs: ["Monitoring"],
+          id: 0,
+          name: "Dornica",
+          size: 30,
+        },
+        {
+          attrs: ["remote", "mobin net"],
+          id: 1,
+          name: "Bonyad.remote",
+          size: 30,
+        },
+        {
+          attrs: ["infra", "CI/CD"],
+          id: 2,
+          name: "gitlab.local",
+          size: 0,
+        },
+        {
+          attrs: [],
+          id: 3,
+          name: "Jira.local",
+          size: 0,
+        },
+        {
+          attrs: ["infra", "mirror", "php", "npm", "CI/CD"],
+          id: 4,
+          name: "Jenkins",
+          size: 0,
+        },
+        {
+          attrs: ["infra", "Data Center", "Backup Srv"],
+          id: 5,
+          name: "Farasoo.DC",
+          size: 30,
+        },
+        {
+          attrs: ["infra", "Data Center", "Major Srv"],
+          id: 6,
+          name: "Arvan.DC",
+          size: 30,
+        },
+        {
+          attrs: ["db"],
+          id: 7,
+          name: "PgSQL.local",
+          size: 0,
+        },
+        {
+          attrs: ["php", "infra"],
+          id: 8,
+          name: "Composer.local",
+          size: 0,
+        },
+        {
+          attrs: ["db"],
+          id: 9,
+          name: "MariaDB.local",
+          size: 0,
+        },
+      ],
+    };
     const response = await fetch(`/status?${queryParams.toString()}`);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -168,7 +283,21 @@ const NetworkGraph: React.FC = () => {
         d3
           .forceLink<Node, Connection>(connections)
           .id((d) => d.id)
-          .distance(120)
+          .distance((d) => {
+            const src = String(d.source.name).toLowerCase();
+            const dst = String(d.target.name).toLowerCase();
+            const checks = [
+              src.endsWith(".dc"),
+              dst.endsWith(".dc"),
+              src.endsWith(".remote"),
+              dst.endsWith(".remote"),
+            ];
+            const distant = checks.filter((a) => a).length > 0;
+            console.log(
+              `Linking ${src} to ${dst}, distant: ${distant}, strength: ${d.strength}`
+            );
+            return distant ? 250 : 120; // longer links for DC
+          })
           .strength((d: Connection) => d.strength || 0.5)
       )
       .force("charge", d3.forceManyBody().strength(-400))
@@ -214,6 +343,24 @@ const NetworkGraph: React.FC = () => {
       .append("stop")
       .attr("offset", "100%")
       .attr("stop-color", "#F59E0B")
+      .attr("stop-opacity", 1);
+
+    const errorNode = defs
+      .append("radialGradient")
+      .attr("id", "errorNode")
+      .attr("cx", "30%")
+      .attr("cy", "30%");
+
+    errorNode
+      .append("stop")
+      .attr("offset", "0%")
+      .attr("stop-color", "#fc534dff")
+      .attr("stop-opacity", 1);
+
+    errorNode
+      .append("stop")
+      .attr("offset", "100%")
+      .attr("stop-color", "#c00000ff")
       .attr("stop-opacity", 1);
 
     // Use <path> instead of <line> for marker-mid support
@@ -263,7 +410,14 @@ const NetworkGraph: React.FC = () => {
       .append("circle")
       .attr("r", (d: Node) => d.size || 20)
       .attr("fill", (d: Node) =>
-        selectedNode === d.id ? "url(#selectedGradient)" : "url(#nodeGradient)"
+        selectedNode === d.id
+          ? "url(#selectedGradient)"
+          : connections.filter(
+              (c: Connection) =>
+                String(c.target.id) === String(d.id) && c.strength != 1
+            ).length > 0
+          ? "url(#errorNode)"
+          : "url(#nodeGradient)"
       )
       .attr("stroke", "#1E293B")
       .attr("stroke-width", 2)
@@ -290,7 +444,7 @@ const NetworkGraph: React.FC = () => {
     node
       .append("text")
       .text((d: Node) => truncateText(d.name, 25))
-      .attr("dy", 40)
+      .attr("dy", 50)
       .attr("text-anchor", "middle")
       .attr("font-family", "Inter, system-ui, sans-serif")
       .attr("font-size", "12px")
@@ -301,6 +455,8 @@ const NetworkGraph: React.FC = () => {
       .append("title") // Tooltip for full text
       .text((d: Node) => d.name);
 
+    // for (let i = 0; i < 300; ++i) simulation.tick();
+    // simulation.stop();
     // Update positions on simulation tick
     simulation.on("tick", () => {
       link
@@ -313,11 +469,13 @@ const NetworkGraph: React.FC = () => {
     });
 
     // Update node colors when selection changes
-    node
-      .select("circle")
-      .attr("fill", (d: Node) =>
-        selectedNode === d.id ? "url(#selectedGradient)" : "url(#nodeGradient)"
+    node.select("circle").attr("fill", (d: Node) => {
+      if (selectedNode === d.id) return "url(#selectedGradient)";
+      const hasErrorLink = connections.some(
+        (c) => String(c.target.id) === String(d.id) && c.strength !== 1
       );
+      return hasErrorLink ? "url(#errorNode)" : "url(#nodeGradient)";
+    });
   }, [nodes, connections, selectedNode]);
 
   if (loading) {
