@@ -182,7 +182,7 @@ const NetworkGraph: React.FC = () => {
             );
             return distant ? 250 : 120; // longer links for DC
           })
-          .strength((d: Connection) => d.strength || 0.0)
+          .strength((d: Connection) => d.strength || 0.4)
       )
       .force("charge", d3.forceManyBody().strength(-400))
       .force("center", d3.forceCenter(width / 2, height / 2))
