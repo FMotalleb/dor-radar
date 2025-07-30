@@ -20,7 +20,7 @@ coverage.html
 
 # Output of GoReleaser
 /dist/
-
+__*
 # Visual Studio Code files
 .vscode/*
 !.vscode/settings.json
