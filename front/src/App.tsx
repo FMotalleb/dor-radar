@@ -114,7 +114,7 @@ const NetworkGraph: React.FC = () => {
         (conn) => ({
           source: conn.source.toString(),
           target: conn.target.toString(),
-          strength: conn.strength || 0.5,
+          strength: conn.strength || 0.0,
         })
       );
 
@@ -182,7 +182,7 @@ const NetworkGraph: React.FC = () => {
             );
             return distant ? 250 : 120; // longer links for DC
           })
-          .strength((d: Connection) => d.strength || 0.5)
+          .strength((d: Connection) => d.strength || 0.0)
       )
       .force("charge", d3.forceManyBody().strength(-400))
       .force("center", d3.forceCenter(width / 2, height / 2))
@@ -464,6 +464,7 @@ const NetworkGraph: React.FC = () => {
                 </div>
               </div>
               {SuccessRateBox(connections)}
+
               {/* Selected Node Info */}
               {selectedNode && (
                 <div className="mb-6 p-4 bg-yellow-500/20 rounded-lg border border-yellow-400/30">
@@ -484,6 +485,32 @@ const NetworkGraph: React.FC = () => {
                           {attr}
                         </span>
                       ))}
+                  </div>
+
+                  {/* Incoming Connections */}
+                  <div className="mt-4">
+                    <h4 className="text-yellow-100 text-xs font-semibold mb-2">
+                      Incoming Connection Strengths
+                    </h4>
+                    {connections
+                      .filter((c) => c.target.id === selectedNode)
+                      .map(function (c, idx) {
+                        console.log(c.strength);
+                        return (
+                          <div key={idx} className="mb-2">
+                            <div className="flex justify-between text-xs text-white mb-1">
+                              <span>{c.source.name}</span>
+                              <span>{Math.round(c.strength * 100)}%</span>
+                            </div>
+                            <div className="w-full h-2 bg-white/10 rounded">
+                              <div
+                                className="h-full bg-green-500 rounded"
+                                style={{ width: `${c.strength * 100}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
                   </div>
                 </div>
               )}
