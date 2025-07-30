@@ -65,6 +65,6 @@ func init() {
 }
 
 func serve(cfg config.Config) error {
-	http.Handle("/status", prometheus.New(cfg.Core.Collector))
+	http.Handle("/status", prometheus.New(&cfg.Collector))
 	return front.Serve(cfg.Core.Listen)
 }

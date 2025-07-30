@@ -7,8 +7,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"time"
+
+	"github.com/fmotalleb/dor-radar/config"
 )
 
 type PromResponse struct {
@@ -22,21 +23,51 @@ type PromResponse struct {
 	} `json:"data"`
 }
 
-func GetData(ctx context.Context, baseUrl *url.URL, window int, minimum bool) (map[string]interface{}, error) {
+func GetData(ctx context.Context, cfg config.Collector, window int, minimum bool) (map[string]interface{}, error) {
 	// Construct full query URL
+	req, err := buildRequest(ctx, cfg, window, minimum)
+	if err != nil {
+		return nil, err
+	}
+
+	promResp, err := sendRequest(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if promResp.Status != "success" {
+		fmt.Println("Prometheus query failed")
+		return nil, fmt.Errorf("query failed: %s", promResp.Status)
+	}
+
+	nodesMap := make(map[string]int)
+
+	nodes, connections, err := extractFields(cfg, promResp, nodesMap)
+	if err != nil {
+		return nil, err
+	}
+	output := map[string]interface{}{
+		"nodes":       nodes,
+		"connections": connections,
+	}
+
+	return output, nil
+}
+
+func buildRequest(ctx context.Context, cfg config.Collector, window int, minimum bool) (*http.Request, error) {
 	switch {
 	case window < 1:
 		return nil, errors.New("minimum range is 1 minute")
 	case window > 60:
-		return nil, errors.New("Maximum range is 60 minutes")
+		return nil, errors.New("maximum range is 60 minutes")
 	}
 	method := "avg_over_time"
 	if minimum {
 		method = "min_over_time"
 	}
-	url := baseUrl.JoinPath("api", "v1", "query")
+	url := cfg.Target.JoinPath("api", "v1", "query")
 	queryParams := url.Query()
-	query := fmt.Sprintf("%s(probe_success[%dm])", method, window)
+	query := fmt.Sprintf("%s(probe_success%s[%dm])", method, cfg.Filter, window)
 	queryParams.Add("query", query)
 	url.RawQuery = queryParams.Encode()
 
@@ -47,78 +78,78 @@ func GetData(ctx context.Context, baseUrl *url.URL, window int, minimum bool) (m
 	}
 
 	// Handle Basic Auth if credentials are provided
-	if baseUrl.User != nil {
-		username := baseUrl.User.Username()
-		password, _ := baseUrl.User.Password() // ok to ignore second return value
+	if cfg.Target.User != nil {
+		username := cfg.Target.User.Username()
+		password, _ := cfg.Target.User.Password() // ok to ignore second return value
 		req.SetBasicAuth(username, password)
 	}
+	return req, nil
+}
 
+func sendRequest(req *http.Request) (PromResponse, error) {
 	client := &http.Client{Timeout: 20 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		fmt.Println("Error querying Prometheus:", err)
-		return nil, err
+		return PromResponse{}, err
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		fmt.Println("Error reading response:", err)
-		return nil, err
+		return PromResponse{}, err
 	}
 
 	var promResp PromResponse
 	if err := json.Unmarshal(body, &promResp); err != nil {
 		fmt.Println("Error parsing JSON:", err)
-		return nil, err
+		return PromResponse{}, err
 	}
+	return promResp, nil
+}
 
-	if promResp.Status != "success" {
-		fmt.Println("Prometheus query failed")
-		return nil, fmt.Errorf("query failed: %s", promResp.Status)
-	}
-
-	nodesMap := make(map[string]int)
+func extractFields(cfg config.Collector, promResp PromResponse, nodesMap map[string]int) ([]map[string]interface{}, []map[string]interface{}, error) {
 	var nodes []map[string]interface{}
 	var connections []map[string]interface{}
 	nodeID := 0
 
 	for _, result := range promResp.Data.Result {
-		hostname := result.Metric["hostname"]
-		target := result.Metric["target"]
+		hostname := cfg.GetShape(result.Metric["hostname"])
+		target := cfg.GetShape(result.Metric["target"])
 		valueStr := fmt.Sprintf("%v", result.Value[1])
 
 		if _, ok := nodesMap[hostname]; !ok {
 			nodesMap[hostname] = nodeID
 			nodes = append(nodes, map[string]interface{}{
-				"id":   nodeID,
-				"name": hostname,
+				"id":    nodeID,
+				"name":  hostname,
+				"attrs": cfg.GetAttrs(result.Metric["hostname"]),
+				"size":  cfg.GetSize(result.Metric["hostname"]),
 			})
 			nodeID++
 		}
 		if _, ok := nodesMap[target]; !ok {
 			nodesMap[target] = nodeID
 			nodes = append(nodes, map[string]interface{}{
-				"id":   nodeID,
-				"name": target,
+				"id":    nodeID,
+				"name":  target,
+				"attrs": cfg.GetAttrs(result.Metric["target"]),
+				"size":  cfg.GetSize(result.Metric["target"]),
 			})
 			nodeID++
 		}
 
 		var strength float64
-		fmt.Sscanf(valueStr, "%f", &strength)
-
+		_, err := fmt.Sscanf(valueStr, "%f", &strength)
+		if err != nil {
+			return nil, nil, err
+		}
 		connections = append(connections, map[string]interface{}{
 			"source":   nodesMap[hostname],
 			"target":   nodesMap[target],
 			"strength": strength,
 		})
 	}
-
-	output := map[string]interface{}{
-		"nodes":       nodes,
-		"connections": connections,
-	}
-
-	return output, nil
+	return nodes, connections, nil
 }

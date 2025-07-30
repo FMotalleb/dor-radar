@@ -9,10 +9,10 @@ import (
 )
 
 type PromCollector struct {
-	config config.Collector
+	config *config.Collector
 }
 
-func New(collectors config.Collector) *PromCollector {
+func New(collectors *config.Collector) *PromCollector {
 	return &PromCollector{
 		config: collectors,
 	}
@@ -34,7 +34,7 @@ func (p *PromCollector) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 	if params.Get("method") == "min" {
 		minimum = true
 	}
-	data, err := GetData(req.Context(), p.config.Target, window, minimum)
+	data, err := GetData(req.Context(), *p.config, window, minimum)
 	if err != nil {
 		http.Error(res, "Failed to get data", http.StatusInternalServerError)
 	}

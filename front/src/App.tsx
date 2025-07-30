@@ -4,6 +4,8 @@ import { RefreshCw, Loader, AlertCircle, Info } from "lucide-react";
 interface Node {
   id: string;
   name: string;
+  attrs: Array<string>;
+  size?: number;
   x?: number;
   y?: number;
   fx?: number | null;
@@ -17,7 +19,12 @@ interface Connection {
 }
 
 interface ApiResponse {
-  nodes: Array<{ id: number; name: string }>;
+  nodes: Array<{
+    id: number;
+    name: string;
+    attrs: Array<string>;
+    size?: number;
+  }>;
   connections: Array<{ source: number; target: number; strength?: number }>;
 }
 
@@ -57,11 +64,7 @@ function truncateText(text: string, maxLength: number): string {
   text = text
     .replace(/https?:\/\//g, "")
     .replace(/\//g, "")
-    .replace(/:\d+/g, "")
-    .replace(/dornica-co.local/g, "local")
-    .replace(/bonyadmaskan.ir/g, "bm")
-    .replace(/h3-devops-/g, "")
-    .replace(/172.18.100.*/g, "Bonyad.Mobin");
+    .replace(/:\d+/g, "");
   return text.length > maxLength ? text.slice(0, maxLength - 1) + "…" : text;
 }
 
@@ -104,6 +107,8 @@ const NetworkGraph: React.FC = () => {
       const transformedNodes: Node[] = data.nodes.map((node) => ({
         id: node.id.toString(),
         name: node.name,
+        attrs: node.attrs,
+        size: node.size ?? 15,
       }));
 
       const transformedConnections: Connection[] = data.connections.map(
@@ -256,7 +261,7 @@ const NetworkGraph: React.FC = () => {
     // Add circles to nodes
     node
       .append("circle")
-      .attr("r", 25)
+      .attr("r", (d: Node) => d.size || 20)
       .attr("fill", (d: Node) =>
         selectedNode === d.id ? "url(#selectedGradient)" : "url(#nodeGradient)"
       )
@@ -417,7 +422,29 @@ const NetworkGraph: React.FC = () => {
                 </div>
               </div>
               {SuccessRateBox(connections)}
-
+              {/* Selected Node Info */}
+              {selectedNode && (
+                <div className="mb-6 p-4 bg-yellow-500/20 rounded-lg border border-yellow-400/30">
+                  <h3 className="text-yellow-200 text-sm font-medium mb-2">
+                    Selected Node
+                  </h3>
+                  <div className="text-white font-semibold">
+                    {nodes.find((n) => n.id === selectedNode)?.name}
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {nodes
+                      .find((n) => n.id === selectedNode)
+                      ?.attrs.map((attr, index) => (
+                        <span
+                          key={index}
+                          className="text-sm bg-purple-400/20 text-purple-100 border border-purple-300/30 px-2 py-1 rounded-md"
+                        >
+                          {attr}
+                        </span>
+                      ))}
+                  </div>
+                </div>
+              )}
               {/* Last Updated */}
               {lastUpdated && (
                 <div className="mb-6 p-3 bg-white/5 rounded-lg border border-white/10">
@@ -482,18 +509,6 @@ const NetworkGraph: React.FC = () => {
                 />
                 Refresh Data
               </button>
-
-              {/* Selected Node Info */}
-              {selectedNode && (
-                <div className="mb-6 p-4 bg-yellow-500/20 rounded-lg border border-yellow-400/30">
-                  <h3 className="text-yellow-200 text-sm font-medium mb-2">
-                    Selected Node
-                  </h3>
-                  <div className="text-white font-semibold">
-                    {nodes.find((n) => n.id === selectedNode)?.name}
-                  </div>
-                </div>
-              )}
 
               {/* Instructions */}
               <div className="p-4 bg-white/5 rounded-lg border border-white/10">
