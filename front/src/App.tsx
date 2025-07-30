@@ -509,6 +509,29 @@ const NetworkGraph: React.FC = () => {
                         </div>
                       ))}
                   </div>
+
+                  {/* Outgoing Connections */}
+                  <div className="mt-4">
+                    <h4 className="text-yellow-100 text-xs font-semibold mb-2">
+                      Outgoing Connection Strengths
+                    </h4>
+                    {connections
+                      .filter((c) => c.source.id === selectedNode)
+                      .map((c, idx) => (
+                        <div key={idx} className="mb-2">
+                          <div className="flex justify-between text-xs text-white mb-1">
+                            <span>{c.target.name}</span>
+                            <span>{Math.round(c.strength * 100)}%</span>
+                          </div>
+                          <div className="w-full h-2 bg-white/10 rounded">
+                            <div
+                              className="h-full bg-green-500 rounded"
+                              style={{ width: `${c.strength * 100}%` }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                  </div>
                 </div>
               )}
               {/* Last Updated */}
