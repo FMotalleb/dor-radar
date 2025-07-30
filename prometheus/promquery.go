@@ -22,8 +22,9 @@ type PromResponse struct {
 		} `json:"result"`
 	} `json:"data"`
 }
+type Json = map[string]interface{}
 
-func GetData(ctx context.Context, cfg config.Collector, window int, minimum bool) (map[string]interface{}, error) {
+func GetData(ctx context.Context, cfg config.Collector, window int, minimum bool) (Json, error) {
 	// Construct full query URL
 	req, err := buildRequest(ctx, cfg, window, minimum)
 	if err != nil {
@@ -151,5 +152,30 @@ func extractFields(cfg config.Collector, promResp PromResponse, nodesMap map[str
 			"strength": strength,
 		})
 	}
-	return nodes, connections, nil
+	return nodes, updateStrength(connections), nil
+}
+
+func updateStrength(connections []Json) []Json {
+	result := make([]Json, len(connections))
+	copy(result, connections)
+	for _, c := range result {
+		c["strength"] = calculateWeakestLink(result, c["source"], c["strength"].(float64))
+	}
+	return result
+}
+
+func calculateWeakestLink(connections []Json, current interface{}, currentStrength float64) float64 {
+	weakest := currentStrength
+
+	for _, c := range connections {
+		if c["target"] == current {
+			if s, ok := c["strength"].(float64); ok {
+				if s < weakest {
+					weakest = s
+				}
+			}
+		}
+	}
+
+	return weakest // fallback if no matching connection
 }

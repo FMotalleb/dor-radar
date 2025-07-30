@@ -101,7 +101,6 @@ const NetworkGraph: React.FC = () => {
       setError(null);
 
       const data = await fetchNetworkData(windowVal, minimum);
-
       // Transform API data to internal format
       const transformedNodes: Node[] = data.nodes.map((node) => ({
         id: node.id.toString(),
@@ -130,6 +129,25 @@ const NetworkGraph: React.FC = () => {
       setLoading(false);
     }
   };
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  // Auto refresh logic
+  useEffect(() => {
+    if (autoRefresh) {
+      intervalRef.current = setInterval(() => {
+        if (!loading) loadNetworkData();
+      }, 15000); // 15 seconds
+    } else if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [autoRefresh, loading]);
 
   // Load data on component mount
   useEffect(() => {
@@ -588,6 +606,19 @@ const NetworkGraph: React.FC = () => {
                 </div>
               </div>
 
+              {/* Auto-Refresh Toggle Button */}
+              <button
+                onClick={() => setAutoRefresh(!autoRefresh)}
+                className={`mb-4 px-4 py-2 rounded-lg font-medium text-white transition-all duration-200 shadow-md hover:shadow-lg
+          ${
+            autoRefresh
+              ? "bg-green-600 hover:bg-green-700"
+              : "bg-orange-500 hover:bg-orange-600"
+          }
+        `}
+              >
+                {autoRefresh ? "Live Polling: ON" : "Live Polling: OFF"}
+              </button>
               {/* Refresh Button */}
               <button
                 onClick={loadNetworkData}

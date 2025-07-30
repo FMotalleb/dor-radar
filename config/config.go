@@ -57,3 +57,4 @@ func (c *Collector) GetSize(key string) int {
 	}
 	return 15
 }
+
