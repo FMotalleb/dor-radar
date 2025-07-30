@@ -8,9 +8,9 @@ builds:
   - env:
       - CGO_ENABLED=0
     goos:
-      - darwin
+      # - darwin
       - linux
-      - windows
+      # - windows
     goarch:
       - amd64
     ldflags:
@@ -20,11 +20,11 @@ builds:
       - "-X github.com/fmotalleb/go-tools/git.Commit={{.ShortCommit}}"
       - "-X github.com/fmotalleb/go-tools/git.Date={{.Date}}"
       - "-X github.com/fmotalleb/go-tools/git.Branch={{.Branch}}"
-archives:
-  - format_overrides:
-      - goos: windows
-        formats: 
-          - zip
+# archives:
+  # - format_overrides:
+  #     - goos: windows
+  #       formats: 
+  #         - zip
 dockers:
   - image_templates:
     - "ghcr.io/fmotalleb/dor-radar:latest"
