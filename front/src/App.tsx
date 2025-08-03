@@ -157,17 +157,28 @@ const NetworkGraph: React.FC = () => {
   useEffect(() => {
     if (!svgRef.current || nodes.length === 0) return;
 
-    // Clear previous content
+    // --- GROUPING LOGIC ---
+    // 1. Assign group to each node based on its name
+    nodes.forEach((node: any) => {
+      const parts = node.name.split(".");
+      // Use the last part of the name as the group, or 'default' if no parts
+      node.group = parts.length > 1 ? parts[parts.length - 1] : "default";
+    });
+
+    // 2. Group nodes by the new 'group' property
+    const groupedNodes = d3.group(nodes, (d: any) => d.group);
+    const color = d3.scaleOrdinal(d3.schemeCategory10);
+    // --- END GROUPING LOGIC ---
+
     const svg = d3.select(svgRef.current);
-    svg.selectAll("*").remove();
+    svg.selectAll("*").remove(); // Clear previous render
 
     const width = 800;
     const height = 600;
+    svg.attr("viewBox", `0 0 ${width} ${height}`);
 
-    // Create main group for zooming
     const g = svg.append("g");
 
-    // Add zoom behavior
     const zoom = d3
       .zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.3, 3])
@@ -177,13 +188,12 @@ const NetworkGraph: React.FC = () => {
 
     svg.call(zoom);
 
-    // Create force simulation
     const simulation = d3
-      .forceSimulation<Node>(nodes)
+      .forceSimulation<any>(nodes)
       .force(
         "link",
         d3
-          .forceLink<Node, Connection>(connections)
+          .forceLink<any, any>(connections)
           .id((d) => d.id)
           .distance((d) => {
             const src = String(d.source.name).toLowerCase();
@@ -194,10 +204,10 @@ const NetworkGraph: React.FC = () => {
               src.endsWith(".remote"),
               dst.endsWith(".remote"),
             ];
-            const distant = checks.filter((a) => a).length > 0;
-            return distant ? 250 : 120; // longer links for DC
+            const distant = checks.some((a) => a);
+            return distant ? 250 : 120;
           })
-          .strength((d: Connection) => d.strength || 0.4)
+          .strength((d: any) => d.strength || 0.4)
       )
       .force("charge", d3.forceManyBody().strength(-400))
       .force("center", d3.forceCenter(width / 2, height / 2))
@@ -231,39 +241,46 @@ const NetworkGraph: React.FC = () => {
       .attr("id", "selectedGradient")
       .attr("cx", "30%")
       .attr("cy", "30%");
-
     selectedGradient
       .append("stop")
       .attr("offset", "0%")
-      .attr("stop-color", "#FCD34D")
-      .attr("stop-opacity", 1);
-
+      .attr("stop-color", "#FCD34D");
     selectedGradient
       .append("stop")
       .attr("offset", "100%")
-      .attr("stop-color", "#F59E0B")
-      .attr("stop-opacity", 1);
+      .attr("stop-color", "#F59E0B");
 
+    // Error node gradient
     const errorNode = defs
       .append("radialGradient")
       .attr("id", "errorNode")
       .attr("cx", "30%")
       .attr("cy", "30%");
-
     errorNode
       .append("stop")
       .attr("offset", "0%")
-      .attr("stop-color", "#fc534dff")
-      .attr("stop-opacity", 1);
-
+      .attr("stop-color", "#fc534dff");
     errorNode
       .append("stop")
       .attr("offset", "100%")
-      .attr("stop-color", "#c00000ff")
-      .attr("stop-opacity", 1);
+      .attr("stop-color", "#c00000ff");
 
-    // Use <path> instead of <line> for marker-mid support
-    // Create connections
+    // --- DRAW GROUP HULLS ---
+    // Draw hulls behind everything else
+    const hullGroup = g.append("g").attr("class", "hulls");
+
+    const hulls = hullGroup
+      .selectAll("path")
+      .data(Array.from(groupedNodes.keys()))
+      .enter()
+      .append("path")
+      .attr("fill", (d: any) => color(d))
+      .attr("fill-opacity", 0.05)
+      .attr("stroke", (d: any) => color(d))
+      .attr("stroke-width", 2)
+      .attr("stroke-linejoin", "round");
+    // --- END HULLS ---
+
     const link = g
       .append("g")
       .attr("class", "links")
@@ -271,11 +288,10 @@ const NetworkGraph: React.FC = () => {
       .data(connections)
       .enter()
       .append("line")
-      .attr("stroke", (d: Connection) => strengthToColor(d.strength))
-      .attr("stroke-opacity", 0.6);
-    // .attr('stroke-width', (d: Connection) => Math.sqrt((d.strength || 0.5) * 8));
+      .attr("stroke", (d: any) => strengthToColor(d.strength))
+      .attr("stroke-opacity", 0.6)
+      .attr("stroke-width", 1.5);
 
-    // Create nodes
     const node = g
       .append("g")
       .attr("class", "nodes")
@@ -287,7 +303,7 @@ const NetworkGraph: React.FC = () => {
       .style("cursor", "pointer")
       .call(
         d3
-          .drag<SVGGElement, Node>()
+          .drag<SVGGElement, any>()
           .on("start", (event, d) => {
             if (!event.active) simulation.alphaTarget(0.3).restart();
             d.fx = d.x;
@@ -304,20 +320,9 @@ const NetworkGraph: React.FC = () => {
           })
       );
 
-    // Add circles to nodes
     node
       .append("circle")
-      .attr("r", (d: Node) => d.size || 20)
-      .attr("fill", (d: Node) =>
-        selectedNode === d.id
-          ? "url(#selectedGradient)"
-          : connections.filter(
-              (c: Connection) =>
-                String(c.target.id) === String(d.id) && c.strength != 1
-            ).length > 0
-          ? "url(#errorNode)"
-          : "url(#nodeGradient)"
-      )
+      .attr("r", 25)
       .attr("stroke", "#1E293B")
       .attr("stroke-width", 2)
       .style("filter", "drop-shadow(0 4px 8px rgba(0,0,0,0.2))")
@@ -339,24 +344,36 @@ const NetworkGraph: React.FC = () => {
         setSelectedNode(selectedNode === d.id ? null : d.id);
       });
 
-    // Add labels to nodes
     node
       .append("text")
-      .text((d: Node) => truncateText(d.name, 25))
-      .attr("dy", 50)
+      .text((d: any) => truncateText(d.name, 25))
+      .attr("dy", 40)
       .attr("text-anchor", "middle")
       .attr("font-family", "Inter, system-ui, sans-serif")
       .attr("font-size", "12px")
       .attr("font-weight", "600")
       .style("pointer-events", "none")
       .style("user-select", "none")
-      .attr("fill", "#F8FAFC") // Light text color
-      .append("title") // Tooltip for full text
-      .text((d: Node) => d.name);
+      .attr("fill", "#F8FAFC")
+      .append("title")
+      .text((d: any) => d.name);
 
-    // for (let i = 0; i < 300; ++i) simulation.tick();
-    // simulation.stop();
-    // Update positions on simulation tick
+    const updateNodeColors = () => {
+      node.select("circle").attr("fill", (d: any) => {
+        if (selectedNode === d.id) return "url(#selectedGradient)";
+        const hasErrorLink = connections.some(
+          (c: any) =>
+            String(c.target.id || c.target) === String(d.id) && c.strength !== 1
+        );
+        if (hasErrorLink) return "url(#errorNode)";
+        // Fallback to group color
+        return "url(#nodeGradient)";
+      });
+    };
+
+    // Initial color update
+    updateNodeColors();
+
     simulation.on("tick", () => {
       link
         .attr("x1", (d: any) => d.source.x)
@@ -364,17 +381,31 @@ const NetworkGraph: React.FC = () => {
         .attr("x2", (d: any) => d.target.x)
         .attr("y2", (d: any) => d.target.y);
 
-      node.attr("transform", (d: Node) => `translate(${d.x},${d.y})`);
+      node.attr("transform", (d: any) => `translate(${d.x},${d.y})`);
+
+      // --- UPDATE HULLS ON TICK ---
+      hulls.attr("d", (groupKey: any) => {
+        const group = groupedNodes.get(groupKey);
+        // A hull needs at least 3 points. For smaller groups, you could draw a circle or nothing.
+        if (!group || group.length < 2) return null;
+
+        // Add padding around the nodes for the hull
+        const padding = 35;
+
+        // Create a convex hull from the node points
+        const points = group.map((d: any) => [d.x, d.y]);
+        const hull = d3.polygonHull(points);
+
+        if (!hull) return null;
+
+        // Create a path from the hull points
+        return `M${hull.join("L")}Z`;
+      });
+      // --- END HULL UPDATE ---
     });
 
-    // Update node colors when selection changes
-    node.select("circle").attr("fill", (d: Node) => {
-      if (selectedNode === d.id) return "url(#selectedGradient)";
-      const hasErrorLink = connections.some(
-        (c) => String(c.target.id) === String(d.id) && c.strength !== 1
-      );
-      return hasErrorLink ? "url(#errorNode)" : "url(#nodeGradient)";
-    });
+    // Re-run color update when selection changes
+    updateNodeColors();
   }, [nodes, connections, selectedNode]);
 
   if (loading) {
