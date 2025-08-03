@@ -9,6 +9,10 @@ listen = "127.0.0.1:8080"
 # The URL of the Prometheus-compatible data source.
 target = "http://prometheus.example.com:9090"
 
+# Prometheus must be able to answer to `probe_success`
+# expected result is
+# probe_success{hostname="<Name of the source node>", target="<Name of the target node>", ...} -> "1|0"
+
 # A PromQL query filter to select specific metrics.
 # This example filters for targets that do not match a certain pattern.
 filter = '{target!~".*(internal.example.com).*"}'
