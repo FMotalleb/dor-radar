@@ -1,0 +1,48 @@
+# Example configuration for Dor Radar
+
+[core]
+# The address and port the application will listen on.
+# Example: "127.0.0.1:8080" or ":8080"
+listen = "127.0.0.1:8080"
+
+[collector]
+# The URL of the Prometheus-compatible data source.
+target = "http://prometheus.example.com:9090"
+
+# A PromQL query filter to select specific metrics.
+# This example filters for targets that do not match a certain pattern.
+filter = '{target!~".*(internal.example.com).*"}'
+
+# Reshape rules allow you to rename, group, and style nodes in the graph.
+# You can have multiple reshape rules.
+
+[[collector.reshape]]
+# The 'from' field is the original name of the node from the data source.
+from = "https://service-a.example.com:443"
+# The 'to' field is the new name you want to display in the graph.
+to = "ServiceA.prod"
+# 'attrs' are arbitrary tags you can add to a node for context.
+attrs = [
+  "production",
+  "billing-api",
+]
+# 'size' allows you to control the visual size of the node in the graph.
+size = 25
+
+[[collector.reshape]]
+from = "https://service-b.internal.example.com"
+to = "ServiceB.internal"
+attrs = [
+  "internal",
+  "database-connector",
+]
+
+[[collector.reshape]]
+from = "datacenter-1-router"
+to = "Main.Datacenter"
+attrs = [
+  "infra",
+  "networking",
+  "core-services",
+]
+size = 30
