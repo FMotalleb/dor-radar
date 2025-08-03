@@ -77,7 +77,7 @@ const NetworkGraph: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  const [windowVal, setWindowVal] = useState(10);
+  const [windowVal, setWindowVal] = useState(1);
   const [minimum, setMinimum] = useState(false);
   const fetchNetworkData = async (
     window: number,
